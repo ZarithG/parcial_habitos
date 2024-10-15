@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:parcial_habitos/pages/CalendarScreen.dart';
 
 class Home extends StatelessWidget {
   const Home({super.key});
@@ -82,6 +83,33 @@ class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddHabitDialog,
         child: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center),
+            label: 'Rutinas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'Calendario',
+          ),
+        ],
+        currentIndex: 0,
+        selectedItemColor: Colors.blueAccent,
+        unselectedItemColor: Colors.grey,
+        backgroundColor: Colors.white,
+        elevation: 10,
+        onTap: (index) {
+          switch (index) {
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CalendarScreen()),
+              );
+              break;
+          }
+        },
       ),
     );
   }
