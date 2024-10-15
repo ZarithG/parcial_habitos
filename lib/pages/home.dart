@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:parcial_habitos/pages/CalendarScreen.dart';
+import 'package:parcial_habitos/providers/db_habits.dart';
 
 class Home extends StatelessWidget {
   const Home({super.key});
@@ -19,11 +20,22 @@ class HabitTrackerScreen extends StatefulWidget {
 
 class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
   List<String> habits = [];
+  final DatabaseHelper _databaseHelper = DatabaseHelper();
 
-  void _addHabit(String habit) {
-    setState(() {
-      habits.add(habit);
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadHabits();
+  }
+
+  Future<void> _loadHabits() async {
+    habits = await _databaseHelper.getHabits();
+    setState(() {});
+  }
+
+  void _addHabit(String habit) async {
+    await _databaseHelper.insertHabit(habit);
+    _loadHabits(); // Vuelve a cargar los hábitos después de agregar uno nuevo
     Navigator.of(context).pop();
   }
 
@@ -105,7 +117,10 @@ class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
             case 1:
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const CalendarScreen()),
+                MaterialPageRoute(
+                    builder: (context) => CalendarScreen(
+                          habits: habits,
+                        )),
               );
               break;
           }

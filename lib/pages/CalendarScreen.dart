@@ -3,7 +3,10 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  final List<String> habits; // Nueva propiedad para recibir hábitos
+
+  const CalendarScreen(
+      {super.key, required this.habits}); // Constructor modificado
 
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
@@ -78,7 +81,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: const Text('Agregar evento'),
                 ),
               const SizedBox(height: 20),
-              _buildEventList(),
+
+              // Mostrar lista de hábitos
+              Text('Hábitos:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: widget.habits.length, // Usar la lista de hábitos
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(widget.habits[index]),
+                    );
+                  },
+                ),
+              ),
+              _buildEventList(), // Mantener la lista de eventos
             ],
           ),
         );
@@ -93,26 +109,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            // Asegúrate de que el TextField tenga el foco
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              FocusScope.of(context).requestFocus(_focusNode);
-            });
+            // Si tienes eventos en la base de datos, pásalos a una lista de Strings
+            List<String> availableEvents =
+                widget.habits; // Lista de hábitos/eventos guardados
+
+            String?
+                selectedEvent; // Variable para almacenar el evento seleccionado
 
             return AlertDialog(
               title: const Text('Agregar Evento con Color'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    child: TextFormField(
-                      controller: _eventController,
-                      focusNode: _focusNode,
-                      autofocus: true,
-                      keyboardType: TextInputType.text,
-                      textInputAction: TextInputAction.send,
-                      decoration: const InputDecoration(hintText: 'Evento'),
-                    ),
+                  // Combobox para seleccionar evento
+                  DropdownButton<String>(
+                    hint: const Text('Selecciona un evento'),
+                    value: selectedEvent,
+                    items: availableEvents.map((String event) {
+                      return DropdownMenuItem<String>(
+                        value: event,
+                        child: Text(event),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        selectedEvent = newValue;
+                      });
+                    },
                   ),
                   const SizedBox(height: 20),
                   // Dropdown para seleccionar color
@@ -141,7 +164,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       });
                     },
                   ),
-                  const SizedBox(height: 20),
                 ],
               ),
               actions: [
@@ -153,16 +175,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 TextButton(
                   onPressed: () {
-                    if (_eventController.text.isEmpty) return;
+                    if (selectedEvent == null) return;
 
                     setState(() {
                       // Agregar el evento con su color
                       if (_events[_selectedDay] != null) {
-                        _events[_selectedDay]![_eventController.text] =
-                            _selectedColor;
+                        _events[_selectedDay]![selectedEvent!] = _selectedColor;
                       } else {
                         _events[_selectedDay!] = {
-                          _eventController.text: _selectedColor
+                          selectedEvent!: _selectedColor,
                         };
                       }
                     });
