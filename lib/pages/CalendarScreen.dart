@@ -3,25 +3,34 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 
 class CalendarScreen extends StatefulWidget {
-  final List<String> habits; // Nueva propiedad para recibir hábitos
+  final List<String> habits;
 
-  const CalendarScreen(
-      {super.key, required this.habits}); // Constructor modificado
+  const CalendarScreen({super.key, required this.habits});
 
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
 }
 
+class HabitTracking {
+  String habitName;
+  int completedDays;
+  DateTime? lastCompletionDate;
+
+  HabitTracking({required this.habitName, this.completedDays = 0, this.lastCompletionDate});
+}
+
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  Map<String, HabitTracking> _habitTrackings = {};
 
-  // Map para guardar eventos con sus respectivos colores
-  Map<DateTime, Map<String, Color>> _events = {};
-
-  final TextEditingController _eventController = TextEditingController();
-  Color _selectedColor = Colors.blue; // Color por defecto
-  final FocusNode _focusNode = FocusNode();
+  @override
+  void initState() {
+    super.initState();
+    for (String habit in widget.habits) {
+      _habitTrackings[habit] = HabitTracking(habitName: habit);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,31 +55,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 },
                 calendarFormat: CalendarFormat.month,
                 eventLoader: (day) {
-                  // Muestra eventos para ese día
-                  return _events[day]?.keys.toList() ?? [];
+                  return _habitTrackings.entries
+                      .where((entry) => entry.value.lastCompletionDate != null &&
+                                        isSameDay(entry.value.lastCompletionDate!, day))
+                      .map((entry) => entry.key)
+                      .toList();
                 },
-                // Personaliza el estilo del calendario para días con eventos
-                calendarBuilders: CalendarBuilders(
-                  markerBuilder: (context, date, events) {
-                    if (_events[date] != null && _events[date]!.isNotEmpty) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: _events[date]!.entries.map((entry) {
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: entry.value, // Color del evento
-                              shape: BoxShape.circle,
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    }
-                    return null;
-                  },
-                ),
               ),
               const SizedBox(height: 20),
               if (_selectedDay != null)
@@ -78,23 +68,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   onPressed: () {
                     _showAddEventDialog(context);
                   },
-                  child: const Text('Agregar evento'),
+                  child: const Text('Marcar hábito como cumplido'),
                 ),
               const SizedBox(height: 20),
-
-              // Mostrar lista de hábitos
-              Text('Hábitos:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Hábitos:', style: TextStyle(fontWeight: FontWeight.bold)),
               Expanded(
                 child: ListView.builder(
-                  itemCount: widget.habits.length, // Usar la lista de hábitos
+                  itemCount: widget.habits.length,
                   itemBuilder: (context, index) {
+                    String habit = widget.habits[index];
+                    HabitTracking tracking = _habitTrackings[habit]!;
                     return ListTile(
-                      title: Text(widget.habits[index]),
+                      title: Text('${tracking.habitName}'),
+                      subtitle: Text('Días cumplidos: ${tracking.completedDays}'),
                     );
                   },
                 ),
               ),
-              _buildEventList(), // Mantener la lista de eventos
             ],
           ),
         );
@@ -102,124 +92,74 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  // Diálogo para agregar eventos con colores
   void _showAddEventDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            // Si tienes eventos en la base de datos, pásalos a una lista de Strings
-            List<String> availableEvents =
-                widget.habits; // Lista de hábitos/eventos guardados
+        String? selectedHabit;
 
-            String?
-                selectedEvent; // Variable para almacenar el evento seleccionado
-
-            return AlertDialog(
-              title: const Text('Agregar Evento con Color'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Combobox para seleccionar evento
-                  DropdownButton<String>(
-                    hint: const Text('Selecciona un evento'),
-                    value: selectedEvent,
-                    items: availableEvents.map((String event) {
-                      return DropdownMenuItem<String>(
-                        value: event,
-                        child: Text(event),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedEvent = newValue;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  // Dropdown para seleccionar color
-                  DropdownButton<Color>(
-                    value: _selectedColor,
-                    items: [
-                      DropdownMenuItem(
-                        value: Colors.red,
-                        child:
-                            Text('Rojo', style: TextStyle(color: Colors.red)),
-                      ),
-                      DropdownMenuItem(
-                        value: Colors.green,
-                        child: Text('Verde',
-                            style: TextStyle(color: Colors.green)),
-                      ),
-                      DropdownMenuItem(
-                        value: Colors.blue,
-                        child:
-                            Text('Azul', style: TextStyle(color: Colors.blue)),
-                      ),
-                    ],
-                    onChanged: (color) {
-                      setState(() {
-                        _selectedColor = color!;
-                      });
-                    },
-                  ),
-                ],
+        return AlertDialog(
+          title: const Text('Selecciona un hábito'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButton<String>(
+                hint: const Text('Selecciona un hábito'),
+                value: selectedHabit,
+                items: widget.habits.map((String habit) {
+                  return DropdownMenuItem<String>(
+                    value: habit,
+                    child: Text(habit),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedHabit = newValue;
+                  });
+                },
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Cancelar'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    if (selectedEvent == null) return;
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (selectedHabit == null || _selectedDay == null) return;
 
-                    setState(() {
-                      // Agregar el evento con su color
-                      if (_events[_selectedDay] != null) {
-                        _events[_selectedDay]![selectedEvent!] = _selectedColor;
-                      } else {
-                        _events[_selectedDay!] = {
-                          selectedEvent!: _selectedColor,
-                        };
-                      }
-                    });
+                _updateHabitTracking(selectedHabit!, _selectedDay!);
 
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Guardar'),
-                ),
-              ],
-            );
-          },
+                Navigator.pop(context);
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
         );
       },
     );
   }
 
-  // Lista de eventos del día seleccionado
-  Widget _buildEventList() {
-    if (_selectedDay == null || _events[_selectedDay] == null) {
-      return const Text('No hay eventos para este día.');
+  void _updateHabitTracking(String habit, DateTime selectedDay) {
+    HabitTracking tracking = _habitTrackings[habit]!;
+
+    if (tracking.lastCompletionDate != null) {
+      if (isSameDay(tracking.lastCompletionDate!.add(Duration(days: 1)), selectedDay)) {
+        tracking.completedDays++;
+      } else if (tracking.lastCompletionDate!.isBefore(selectedDay)) {
+        tracking.completedDays = 1;
+      }
+    } else {
+      tracking.completedDays = 1;
     }
 
-    return Expanded(
-      child: ListView.builder(
-        itemCount: _events[_selectedDay]!.length,
-        itemBuilder: (context, index) {
-          String event = _events[_selectedDay]!.keys.elementAt(index);
-          Color color = _events[_selectedDay]!.values.elementAt(index);
-          return ListTile(
-            title: Text(event),
-            leading: CircleAvatar(
-              backgroundColor: color,
-            ),
-          );
-        },
-      ),
-    );
+    tracking.lastCompletionDate = selectedDay;
+
+    setState(() {
+      _habitTrackings[habit] = tracking;
+    });
   }
 }

@@ -21,6 +21,7 @@ class HabitTrackerScreen extends StatefulWidget {
 class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
   List<String> habits = [];
   final DatabaseHelper _databaseHelper = DatabaseHelper();
+  Map<String, HabitTracking> _habitTrackings = {};
 
   @override
   void initState() {
@@ -30,12 +31,19 @@ class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
 
   Future<void> _loadHabits() async {
     habits = await _databaseHelper.getHabits();
+    _initializeHabitTrackings();
     setState(() {});
+  }
+
+  void _initializeHabitTrackings() {
+    for (String habit in habits) {
+      _habitTrackings[habit] = HabitTracking(habitName: habit);
+    }
   }
 
   void _addHabit(String habit) async {
     await _databaseHelper.insertHabit(habit);
-    _loadHabits(); // Vuelve a cargar los hábitos después de agregar uno nuevo
+    _loadHabits();
     Navigator.of(context).pop();
   }
 
@@ -87,8 +95,14 @@ class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
           : ListView.builder(
               itemCount: habits.length,
               itemBuilder: (context, index) {
+                String habit = habits[index];
+                HabitTracking? tracking = _habitTrackings[habit];
+
                 return ListTile(
-                  title: Text(habits[index]),
+                  title: Text(habit),
+                  subtitle: Text(tracking != null
+                      ? 'Días cumplidos: ${tracking.completedDays}'
+                      : 'No hay datos de seguimiento'),
                 );
               },
             ),
@@ -100,7 +114,7 @@ class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.fitness_center),
-            label: 'Rutinas',
+            label: 'Hábitos',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_month),
