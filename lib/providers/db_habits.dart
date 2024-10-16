@@ -1,4 +1,4 @@
-import 'package:sqflite/sqflite.dart';
+ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
@@ -23,11 +23,11 @@ class DatabaseHelper {
       path,
       version: 1,
       onCreate: (db, version) async {
-        
+        // Crear tabla de hábitos
         await db.execute(
           'CREATE TABLE habits(id INTEGER PRIMARY KEY AUTOINCREMENT, habit TEXT)',
         );
-        
+        // Crear tabla para registrar días cumplidos
         await db.execute(
           'CREATE TABLE habit_days(id INTEGER PRIMARY KEY AUTOINCREMENT, habit_id INTEGER, date TEXT, FOREIGN KEY(habit_id) REFERENCES habits(id))',
         );
