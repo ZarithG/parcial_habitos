@@ -31,7 +31,22 @@ class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
 
   Future<void> _loadHabits() async {
     habits = await _databaseHelper.getHabits();
-    _initializeHabitTrackings();
+
+    // Cargar las fechas de cumplimiento de la base de datos
+    Map<String, List<DateTime>> habitsWithDates =
+        await _databaseHelper.getHabitsWithCompletionDates();
+
+    // Inicializar el seguimiento de hábitos con los días cumplidos
+    for (String habit in habits) {
+      List<DateTime> completionDates = habitsWithDates[habit] ?? [];
+      _habitTrackings[habit] = HabitTracking(
+        habitName: habit,
+        completedDays: completionDates.length,
+        lastCompletionDate:
+            completionDates.isNotEmpty ? completionDates.last : null,
+      );
+    }
+
     setState(() {});
   }
 
@@ -126,17 +141,18 @@ class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
         unselectedItemColor: Colors.grey,
         backgroundColor: Colors.white,
         elevation: 10,
-        onTap: (index) {
-          switch (index) {
-            case 1:
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => CalendarScreen(
-                          habits: habits,
-                        )),
-              );
-              break;
+        onTap: (index) async {
+          if (index == 1) {
+            // Navegar a la pantalla del calendario y esperar el resultado
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CalendarScreen(habits: habits),
+              ),
+            );
+
+            // Recargar los hábitos cuando regresas a la pantalla principal
+            _loadHabits(); // Esto recargará los datos cuando vuelvas
           }
         },
       ),

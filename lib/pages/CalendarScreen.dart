@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:parcial_habitos/providers/db_habits.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 
@@ -80,7 +81,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     HabitTracking tracking = _habitTrackings[habit]!;
                     return ListTile(
                       title: Text('${tracking.habitName}'),
-                      subtitle: Text('Días cumplidos: ${tracking.completedDays}'),
                     );
                   },
                 ),
@@ -143,23 +143,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _updateHabitTracking(String habit, DateTime selectedDay) {
-    HabitTracking tracking = _habitTrackings[habit]!;
+  void _updateHabitTracking(String habit, DateTime selectedDay) async {
+  HabitTracking tracking = _habitTrackings[habit]!;
 
-    if (tracking.lastCompletionDate != null) {
-      if (isSameDay(tracking.lastCompletionDate!.add(Duration(days: 1)), selectedDay)) {
-        tracking.completedDays++;
-      } else if (tracking.lastCompletionDate!.isBefore(selectedDay)) {
-        tracking.completedDays = 1;
-      }
-    } else {
+  if (tracking.lastCompletionDate != null) {
+    if (isSameDay(tracking.lastCompletionDate!.add(Duration(days: 1)), selectedDay)) {
+      tracking.completedDays++;
+    } else if (tracking.lastCompletionDate!.isBefore(selectedDay)) {
       tracking.completedDays = 1;
     }
-
-    tracking.lastCompletionDate = selectedDay;
-
-    setState(() {
-      _habitTrackings[habit] = tracking;
-    });
+  } else {
+    tracking.completedDays = 1;
   }
+
+  tracking.lastCompletionDate = selectedDay;
+
+  // Aquí registramos la fecha en la base de datos
+  final habitId = widget.habits.indexOf(habit) + 1;  // Asume que el ID es el índice + 1, puedes ajustar esto si tienes IDs distintos.
+  await DatabaseHelper().insertHabitCompletion(habitId, selectedDay);
+
+  setState(() {
+    _habitTrackings[habit] = tracking;
+  });
+}
+
 }
