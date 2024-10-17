@@ -17,10 +17,14 @@ class HabitTracking {
   int completedDays;
   DateTime? lastCompletionDate;
 
-  HabitTracking({required this.habitName, this.completedDays = 0, this.lastCompletionDate});
+  HabitTracking(
+      {required this.habitName,
+      this.completedDays = 0,
+      this.lastCompletionDate});
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+  List<String> _habitsForSelectedDay = [];
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<String, HabitTracking> _habitTrackings = {};
@@ -53,12 +57,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     _selectedDay = selectedDay;
                     _focusedDay = focusedDay;
                   });
+                  _loadHabitsForSelectedDay();
                 },
                 calendarFormat: CalendarFormat.month,
                 eventLoader: (day) {
                   return _habitTrackings.entries
-                      .where((entry) => entry.value.lastCompletionDate != null &&
-                                        isSameDay(entry.value.lastCompletionDate!, day))
+                      .where((entry) =>
+                          entry.value.lastCompletionDate != null &&
+                          isSameDay(entry.value.lastCompletionDate!, day))
                       .map((entry) => entry.key)
                       .toList();
                 },
@@ -72,18 +78,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: const Text('Marcar hábito como cumplido'),
                 ),
               const SizedBox(height: 20),
-              const Text('Hábitos:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Hábitos:',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               Expanded(
-                child: ListView.builder(
-                  itemCount: widget.habits.length,
-                  itemBuilder: (context, index) {
-                    String habit = widget.habits[index];
-                    HabitTracking tracking = _habitTrackings[habit]!;
-                    return ListTile(
-                      title: Text('${tracking.habitName}'),
-                    );
-                  },
-                ),
+                child: _habitsForSelectedDay.isEmpty
+                    ? const Center(
+                        child: Text('No hay hábitos cumplidos en esta fecha.'),
+                      )
+                    : ListView.builder(
+                        itemCount: _habitsForSelectedDay.length,
+                        itemBuilder: (context, index) {
+                          String habit = _habitsForSelectedDay[index];
+                          return ListTile(
+                            title: Text(habit),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
@@ -92,7 +102,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _showAddEventDialog(BuildContext context) {
+ void _loadHabitsForSelectedDay() async {
+  if (_selectedDay == null) return;
+
+  // Reiniciar la lista de hábitos para el día seleccionado
+  _habitsForSelectedDay.clear();
+
+  // Obtener todas las fechas de cumplimiento de la base de datos
+  Map<String, List<DateTime>> habitsWithCompletionDates = await DatabaseHelper().getHabitsWithCompletionDates();
+
+  // Filtrar los hábitos que coinciden con la fecha seleccionada
+  for (var entry in habitsWithCompletionDates.entries) {
+    String habitName = entry.key;
+    List<DateTime> completionDates = entry.value;
+
+    if (completionDates.any((date) => isSameDay(date, _selectedDay!))) {
+      _habitsForSelectedDay.add(habitName);
+    }
+  }
+
+  // Actualizar la UI
+  setState(() {});
+}
+
+void _showAddEventDialog(BuildContext context) {
   String? selectedHabit;
 
   showDialog(
@@ -105,21 +138,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButton<String>(
-                  hint: const Text('Selecciona un hábito'),
-                  value: selectedHabit,
-                  items: widget.habits.map((String habit) {
-                    return DropdownMenuItem<String>(
-                      value: habit,
-                      child: Text(habit),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedHabit = newValue;
-                    });
-                  },
-                ),
+                // Si la lista de hábitos está vacía, muestra un mensaje.
+                if (widget.habits.isEmpty)
+                  const Text('No hay hábitos disponibles para seleccionar'),
+                if (widget.habits.isNotEmpty)
+                  DropdownButton<String>(
+                    hint: const Text('Selecciona un hábito'),
+                    value: selectedHabit,
+                    items: widget.habits.map((String habit) {
+                      return DropdownMenuItem<String>(
+                        value: habit,
+                        child: Text(habit),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        selectedHabit = newValue;
+                      });
+                    },
+                  ),
               ],
             );
           },
@@ -133,10 +170,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           TextButton(
             onPressed: () {
-              if (selectedHabit == null || _selectedDay == null) return;
+              if (selectedHabit == null || _selectedDay == null) {
+                return; // No hacer nada si no hay hábito seleccionado
+              }
 
               _updateHabitTracking(selectedHabit!, _selectedDay!);
-
               Navigator.pop(context);
             },
             child: const Text('Guardar'),
@@ -148,7 +186,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 }
 
 
-  void _updateHabitTracking(String habit, DateTime selectedDay) async {
+void _updateHabitTracking(String habit, DateTime selectedDay) async {
   HabitTracking tracking = _habitTrackings[habit]!;
 
   if (tracking.lastCompletionDate != null) {
@@ -163,13 +201,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   tracking.lastCompletionDate = selectedDay;
 
-  // Aquí registramos la fecha en la base de datos
-  final habitId = widget.habits.indexOf(habit) + 1;  // Asume que el ID es el índice + 1, puedes ajustar esto si tienes IDs distintos.
-  await DatabaseHelper().insertHabitCompletion(habitId, selectedDay);
+  // Obtener el ID del hábito y guardar la fecha de cumplimiento en la base de datos
+  final habitId = await DatabaseHelper().getHabitIdByName(habit);
 
-  setState(() {
-    _habitTrackings[habit] = tracking;
-  });
+  if (habitId != null) {
+    await DatabaseHelper().insertHabitCompletion(habitId, selectedDay);
+
+    // Aquí actualizas el estado para que se refleje el cambio
+    setState(() {
+      _habitTrackings[habit] = tracking;
+    });
+
+    // Recargar la lista de hábitos cumplidos en la fecha seleccionada
+    _loadHabitsForSelectedDay();
+  } else {
+    print("Error: No se encontró el ID del hábito.");
+  }
 }
+
 
 }

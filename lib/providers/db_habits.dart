@@ -50,12 +50,13 @@ class DatabaseHelper {
   }
 
   Future<void> insertHabitCompletion(int habitId, DateTime date) async {
-    final db = await database;
-    await db.insert('habit_days', {
-      'habit_id': habitId,
-      'date': date.toIso8601String(),
-    });
-  }
+  final db = await database;
+  await db.insert('habit_days', {
+    'habit_id': habitId,
+    'date': date.toIso8601String(),
+  });
+}
+
 
   Future<List<DateTime>> getHabitCompletionDates(int habitId) async {
     final db = await database;
@@ -69,6 +70,41 @@ class DatabaseHelper {
       return DateTime.parse(maps[i]['date'] as String);
     });
   }
+
+  Future<List<String>> getHabitsForDate(DateTime date) async {
+  final db = await database;
+  
+  // Convertir la fecha a formato de texto para hacer coincidir con la base de datos
+  String formattedDate = date.toIso8601String().split('T')[0];
+  
+  final List<Map<String, dynamic>> maps = await db.rawQuery('''
+    SELECT habits.habit FROM habits
+    INNER JOIN habit_days ON habits.id = habit_days.habit_id
+    WHERE habit_days.date LIKE ?
+  ''', ['$formattedDate%']);
+
+  return List.generate(maps.length, (i) {
+    return maps[i]['habit'] as String;
+  });
+}
+
+Future<int?> getHabitIdByName(String habitName) async {
+  final db = await database;
+  final List<Map<String, dynamic>> result = await db.query(
+    'habits',
+    columns: ['id'],
+    where: 'habit = ?',
+    whereArgs: [habitName],
+  );
+
+  if (result.isNotEmpty) {
+    return result.first['id'] as int;
+  } else {
+    return null; // Si no se encuentra, devolver null
+  }
+}
+
+
 
   Future<Map<String, List<DateTime>>> getHabitsWithCompletionDates() async {
     final db = await database;
@@ -98,4 +134,34 @@ class DatabaseHelper {
       whereArgs: [habit], // Argumento para la condición
     );
   }
+
+  Future<void> printAllHabits() async {
+  final db = await database;
+  
+  // Consulta todos los hábitos en la tabla 'habits'
+  final List<Map<String, dynamic>> result = await db.query('habits');
+
+  // Itera sobre los resultados y los imprime
+  print('---- Lista de hábitos en la base de datos ----');
+  result.forEach((row) {
+    print('ID: ${row['id']}, Habit: ${row['habit']}');
+  });
+
+  // Para imprimir también los días cumplidos
+  final List<Map<String, dynamic>> habitDays = await db.query('habit_days');
+  print('---- Días de hábitos registrados ----');
+  habitDays.forEach((row) {
+    print('Habit ID: ${row['habit_id']}, Habit ID_ref: ${row['id']} , Date: ${row['date']}');
+  });
+}
+
+Future<void> clearDatabase() async {
+  final db = await database;
+
+  // Eliminar todos los registros de ambas tablas
+  await db.delete('habit_days');
+  await db.delete('habits');
+}
+
+
 }
