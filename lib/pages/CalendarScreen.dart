@@ -93,55 +93,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void _showAddEventDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        String? selectedHabit;
+  String? selectedHabit;
 
-        return AlertDialog(
-          title: const Text('Selecciona un hábito'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButton<String>(
-                hint: const Text('Selecciona un hábito'),
-                value: selectedHabit,
-                items: widget.habits.map((String habit) {
-                  return DropdownMenuItem<String>(
-                    value: habit,
-                    child: Text(habit),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    selectedHabit = newValue;
-                  });
-                },
-              ),
-            ],
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Selecciona un hábito'),
+        content: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButton<String>(
+                  hint: const Text('Selecciona un hábito'),
+                  value: selectedHabit,
+                  items: widget.habits.map((String habit) {
+                    return DropdownMenuItem<String>(
+                      value: habit,
+                      child: Text(habit),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedHabit = newValue;
+                    });
+                  },
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Cancelar'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (selectedHabit == null || _selectedDay == null) return;
+          TextButton(
+            onPressed: () {
+              if (selectedHabit == null || _selectedDay == null) return;
 
-                _updateHabitTracking(selectedHabit!, _selectedDay!);
+              _updateHabitTracking(selectedHabit!, _selectedDay!);
 
-                Navigator.pop(context);
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+              Navigator.pop(context);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   void _updateHabitTracking(String habit, DateTime selectedDay) async {
   HabitTracking tracking = _habitTrackings[habit]!;

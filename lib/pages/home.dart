@@ -98,64 +98,109 @@ class _HabitTrackerScreenState extends State<HabitTrackerScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis Hábitos'),
-      ),
-      body: habits.isEmpty
-          ? const Center(
-              child: Text('No hay hábitos agregados.'),
-            )
-          : ListView.builder(
-              itemCount: habits.length,
-              itemBuilder: (context, index) {
-                String habit = habits[index];
-                HabitTracking? tracking = _habitTrackings[habit];
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('Mis Hábitos'),
+    ),
+    body: habits.isEmpty
+        ? const Center(
+            child: Text('No hay hábitos agregados.'),
+          )
+        : ListView.builder(
+            itemCount: habits.length,
+            itemBuilder: (context, index) {
+              String habit = habits[index];
+              HabitTracking? tracking = _habitTrackings[habit];
 
-                return ListTile(
-                  title: Text(habit),
-                  subtitle: Text(tracking != null
-                      ? 'Días cumplidos: ${tracking.completedDays}'
-                      : 'No hay datos de seguimiento'),
-                );
-              },
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddHabitDialog,
-        child: const Icon(Icons.add),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center),
-            label: 'Hábitos',
+              // Verificar si el hábito tiene 21 o más días cumplidos
+              bool isHabitComplete = tracking != null && tracking.completedDays >= 21;
+
+              return ListTile(
+                title: Text(habit),
+                subtitle: Text(tracking != null
+                    ? 'Días cumplidos: ${tracking.completedDays}'
+                    : 'No hay datos de seguimiento'),
+                tileColor: isHabitComplete ? Colors.green[100] : null, // Cambiar el color de fondo si cumple la condición
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () {
+                    _showDeleteConfirmationDialog(habit); // Mostrar el diálogo de confirmación para eliminar
+                  },
+                ),
+              );
+            },
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month),
-            label: 'Calendario',
+    floatingActionButton: FloatingActionButton(
+      onPressed: _showAddHabitDialog,
+      child: const Icon(Icons.add),
+    ),
+    bottomNavigationBar: BottomNavigationBar(
+      items: const <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.fitness_center),
+          label: 'Hábitos',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.calendar_month),
+          label: 'Calendario',
+        ),
+      ],
+      currentIndex: 0,
+      selectedItemColor: Colors.blueAccent,
+      unselectedItemColor: Colors.grey,
+      backgroundColor: Colors.white,
+      elevation: 10,
+      onTap: (index) async {
+        if (index == 1) {
+          // Navegar a la pantalla del calendario y esperar el resultado
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CalendarScreen(habits: habits),
+            ),
+          );
+
+          // Recargar los hábitos cuando regresas a la pantalla principal
+          _loadHabits(); // Esto recargará los datos cuando vuelvas
+        }
+      },
+    ),
+  );
+}
+
+void _showDeleteConfirmationDialog(String habit) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Eliminar Hábito'),
+        content: Text('¿Estás seguro de que deseas eliminar el hábito "$habit"?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Cerrar el diálogo
+            },
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              _deleteHabit(habit); // Llamar a la función de eliminación
+              Navigator.of(context).pop(); // Cerrar el diálogo después de eliminar
+            },
+            child: const Text('Eliminar'),
           ),
         ],
-        currentIndex: 0,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        backgroundColor: Colors.white,
-        elevation: 10,
-        onTap: (index) async {
-          if (index == 1) {
-            // Navegar a la pantalla del calendario y esperar el resultado
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CalendarScreen(habits: habits),
-              ),
-            );
+      );
+    },
+  );
+}
 
-            // Recargar los hábitos cuando regresas a la pantalla principal
-            _loadHabits(); // Esto recargará los datos cuando vuelvas
-          }
-        },
-      ),
-    );
-  }
+
+void _deleteHabit(String habit) async {
+  await _databaseHelper.deleteHabit(habit); // Eliminar de la base de datos
+  _loadHabits(); // Recargar la lista de hábitos después de eliminar
+}
+
+
 }

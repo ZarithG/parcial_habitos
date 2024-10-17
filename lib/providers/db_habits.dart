@@ -1,4 +1,4 @@
- import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
@@ -35,13 +35,11 @@ class DatabaseHelper {
     );
   }
 
-  
   Future<void> insertHabit(String habit) async {
     final db = await database;
     await db.insert('habits', {'habit': habit});
   }
 
-  
   Future<List<String>> getHabits() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('habits');
@@ -51,7 +49,6 @@ class DatabaseHelper {
     });
   }
 
-  
   Future<void> insertHabitCompletion(int habitId, DateTime date) async {
     final db = await database;
     await db.insert('habit_days', {
@@ -60,7 +57,6 @@ class DatabaseHelper {
     });
   }
 
-  
   Future<List<DateTime>> getHabitCompletionDates(int habitId) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -74,14 +70,11 @@ class DatabaseHelper {
     });
   }
 
-  
   Future<Map<String, List<DateTime>>> getHabitsWithCompletionDates() async {
     final db = await database;
 
-  
     final List<Map<String, dynamic>> habits = await db.query('habits');
 
-  
     Map<String, List<DateTime>> habitsWithDates = {};
 
     for (var habit in habits) {
@@ -94,5 +87,15 @@ class DatabaseHelper {
     }
 
     return habitsWithDates;
+  }
+
+  Future<void> deleteHabit(String habit) async {
+    final db = await database;
+    await db.delete(
+      'habits', // Nombre de la tabla
+      where:
+          'habit = ?', // Condición para eliminar, usando el nombre correcto de la columna
+      whereArgs: [habit], // Argumento para la condición
+    );
   }
 }
